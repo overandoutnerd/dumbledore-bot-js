@@ -35,6 +35,13 @@ const client = new Client({
         Partials.Reaction,
     ],
 });
+// Keep the bot alive when a dependency (e.g. the database) is down.
+process.on("unhandledRejection", (reason) => {
+    console.error("[DumbledoreBot] ⚠️ Unhandled rejection (kept running):", reason);
+});
+process.on("uncaughtException", (error) => {
+    console.error("[DumbledoreBot] ⚠️ Uncaught exception (kept running):", error);
+});
 client.once("clientReady", async () => {
     console.log(`🧙 Logged in as ${client.user?.tag}`);
     for (const guild of client.guilds.cache.values()) {
@@ -48,7 +55,7 @@ client.once("clientReady", async () => {
             if (!member.joinedTimestamp) {
                 continue;
             }
-            saveMember(guild.id, member.id, member.joinedTimestamp);
+            saveMember(guild.id, member.id, member.joinedTimestamp).catch(() => { });
             added++;
         }
         console.log(`[DumbledoreBot] 📚 Processed ${added} members.`);
