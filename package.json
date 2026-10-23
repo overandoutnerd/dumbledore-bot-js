@@ -1,0 +1,32 @@
+{
+  "name": "dumbledore-discord-bot",
+  "version": "1.0.0",
+  "description": "Albus Dumbledore Discord Bot",
+  "type": "module",
+  "main": "dist/bot.js",
+  "scripts": {
+    "dev": "tsx src/bot.ts",
+    "build": "tsc",
+    "start": "node dist/bot.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "dumbledore",
+    "harry-potter"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@overandoutnerd/dumbledore-bot-core": "^1.0.9",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
