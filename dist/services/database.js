@@ -30,6 +30,26 @@ if (!process.env.DATABASE_URL_DIRECT) {
         "guild_settings_changed notifications will silently never arrive " +
         "and the settings cache will go stale after dashboard writes.");
 }
+let reconnectTimer = null;
+let reconnectDelayMs = 5_000;
+const MAX_RECONNECT_DELAY_MS = 5 * 60_000;
+function scheduleReconnect() {
+    // "end" and a failed connect can both fire - only ever keep one timer.
+    if (reconnectTimer) {
+        return;
+    }
+    const delay = reconnectDelayMs;
+    // Exponential backoff (5s -> 10s -> ... -> 5min) so a down/over-quota
+    // database isn't hammered every few seconds.
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
+    console.warn(`[Database:listen] retrying in ${Math.round(delay / 1000)}s...`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectListenClient().catch((error) => {
+            console.error("[Database:listen] reconnect failed:", error?.message ?? error);
+        });
+    }, delay);
+}
 async function connectListenClient() {
     const client = new Client({
         connectionString: LISTEN_CONNECTION_STRING,
@@ -44,23 +64,20 @@ async function connectListenClient() {
         console.error("[Database:listen]", error.code, error.message);
     });
     client.on("end", () => {
-        console.warn("[Database:listen] connection closed, reconnecting in 5s...");
-        setTimeout(reconnectListenClient, 5000);
+        scheduleReconnect();
     });
     try {
         await client.connect();
         await client.query("LISTEN guild_settings_changed");
         await client.query("LISTEN guild_bot_manager_roles_changed");
+        // Healthy again - reset the backoff.
+        reconnectDelayMs = 5_000;
         console.log("[Database:listen] listening for guild_settings_changed, guild_bot_manager_roles_changed");
     }
     catch (error) {
-        console.error("[Database:listen] failed to connect, retrying in 5s...", error);
-        setTimeout(reconnectListenClient, 5000);
+        console.error("[Database:listen] failed to connect:", error?.message ?? error);
+        client.end().catch(() => { });
+        scheduleReconnect();
     }
-}
-function reconnectListenClient() {
-    connectListenClient().catch((error) => {
-        console.error("[Database:listen] reconnect failed:", error);
-    });
 }
 connectListenClient();
